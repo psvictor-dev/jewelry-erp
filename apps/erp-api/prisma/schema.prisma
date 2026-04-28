@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────
+enum UserRole {
+  ADMIN
+  GERENTE
+  VENDEDOR
+  ESTOQUISTA
+}
+
+enum ProductStatus {
+  ATIVO
+  INATIVO
+  CONSIGNADO
+}
+
+enum StockMovementType {
+  ENTRADA
+  SAIDA
+  AJUSTE
+  DEVOLUCAO
+}
+
+enum PaymentMethod {
+  DINHEIRO
+  PIX
+  CARTAO_DEBITO
+  CARTAO_CREDITO
+}
+
+enum QuoteStatus {
+  RASCUNHO
+  ENVIADO
+  APROVADO
+  RECUSADO
+  EXPIRADO
+}
+
+enum SaleStatus {
+  PENDENTE
+  PAGO
+  CANCELADO
+  DEVOLVIDO
+}
+
+enum TransactionType {
+  RECEITA
+  DESPESA
+}
+
+enum TransactionStatus {
+  PENDENTE
+  PAGO
+  VENCIDO
+  CANCELADO
+}
+
+enum TransactionCategory {
+  VENDA
+  COMPRA_ESTOQUE
+  ALUGUEL
+  SALARIO
+  MANUTENCAO
+  MARKETING
+  IMPOSTOS
+  OUTROS
+}
+
+// ─── Fase 1 ───────────────────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(VENDEDOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  stockMovements StockMovement[]
+  auditLogs      AuditLog[]
+  quotes         Quote[]
+  sales          Sale[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id            String        @id @default(uuid())
+  sku           String        @unique
+  serialNumber  String?       @unique
+  name          String
+  description   String?
+  status        ProductStatus @default(ATIVO)
+  material      String?
+  stones        String?
+  weightGrams   Decimal?      @db.Decimal(10, 3)
+  purityKarats  Int?
+  color         String?
+  dimensions    String?
+  costPrice     Decimal       @db.Decimal(12, 2)
+  salePrice     Decimal       @db.Decimal(12, 2)
+  stock         Decimal       @default(0) @db.Decimal(10, 2)
+  minStock      Decimal       @default(1) @db.Decimal(10, 2)
+  visibleOnSite Boolean       @default(false)
+  photos        String[]
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+
+  // Unidades
+  unEstoque        String?   @default("UN")
+  unCompra         String?   @default("UN")
+  fatorConversao   Decimal?  @default(1) @db.Decimal(10, 4)
+  unidadePeso      String?   @default("GR")
+  tamanho          String?
+
+  // Classificação
+  tipoProduto      String?   @default("PRODUTO")
+  vendido          Boolean   @default(true)
+  estocado         Boolean   @default(true)
+  comprado         Boolean   @default(true)
+  produzido        Boolean   @default(false)
+  usadoParaCompor  Boolean   @default(false)
+  kitVenda         Boolean   @default(false)
+  pdv              Boolean   @default(false)
+  favorito         Boolean   @default(false)
+
+  // Agrupamento
+  grupoProdutos    String?
+  subgrupoProdutos String?
+  mercadoAlvo      String?
+
+  // Custos e Preços (sistema legado)
+  valorCompraAu    Decimal?  @db.Decimal(12, 4)
+  moedaCompra      String?   @default("AU")
+  markup           Decimal?  @db.Decimal(10, 4)
+  markup2          Decimal?  @db.Decimal(10, 4)
+  precoMoeda       Decimal?  @db.Decimal(12, 4)
+  preco2           Decimal?  @db.Decimal(12, 2)
+  valorAu          Decimal?  @db.Decimal(12, 2)
+  custoMedio       Decimal?  @db.Decimal(12, 2)
+
+  // Fornecedor
+  fornecedorNome   String?
+  fornecedorCodigo String?
+  codigoFornecedor String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  stockMovements StockMovement[]
+  quoteItems     QuoteItem[]
+  saleItems      SaleItem[]
+
+  @@map("products")
+}
+
+model StockMovement {
+  id          String            @id @default(uuid())
+  type        StockMovementType
+  quantity    Int
+  reason      String?
+  referenceId String?
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id])
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  createdAt   DateTime          @default(now())
+
+  @@map("stock_movements")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String
+  oldValue  Json?
+  newValue  Json?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+// ─── Fase 2: Clientes ─────────────────────────────────────────────
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?  @unique
+  phone     String?
+  cpf       String?  @unique
+  address   String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotes Quote[]
+  sales  Sale[]
+
+  @@map("customers")
+}
+
+// ─── Fase 2: Orçamentos ───────────────────────────────────────────
+model Quote {
+  id           String      @id @default(uuid())
+  number       Int         @unique @default(autoincrement())
+  status       QuoteStatus @default(RASCUNHO)
+  notes        String?
+  validUntil   DateTime?
+  discount     Decimal     @default(0) @db.Decimal(12, 2)
+  total        Decimal     @db.Decimal(12, 2)
+
+  customerId   String?
+  customer     Customer?   @relation(fields: [customerId], references: [id])
+  userId       String
+  user         User        @relation(fields: [userId], references: [id])
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  items        QuoteItem[]
+  sale         Sale?
+
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id         String  @id @default(uuid())
+  quantity   Int
+  unitPrice  Decimal @db.Decimal(12, 2)
+  discount   Decimal @default(0) @db.Decimal(12, 2)
+  total      Decimal @db.Decimal(12, 2)
+
+  quoteId    String
+  quote      Quote   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+
+  @@map("quote_items")
+}
+
+// ─── Fase 2: Vendas ───────────────────────────────────────────────
+model Sale {
+  id            String        @id @default(uuid())
+  number        Int           @unique @default(autoincrement())
+  status        SaleStatus    @default(PENDENTE)
+  paymentMethod PaymentMethod
+  installments  Int           @default(1)
+  discount      Decimal       @default(0) @db.Decimal(12, 2)
+  total         Decimal       @db.Decimal(12, 2)
+  notes         String?
+  data          DateTime      @default(now())
+  paidAt        DateTime?
+
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  quoteId       String?       @unique
+  quote         Quote?        @relation(fields: [quoteId], references: [id])
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items         SaleItem[]
+  transactions  Transaction[]
+
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  unitPrice Decimal @db.Decimal(12, 2)
+  costPrice Decimal @db.Decimal(12, 2)
+  discount  Decimal @default(0) @db.Decimal(12, 2)
+  total     Decimal @db.Decimal(12, 2)
+
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+// ─── Fase 2: Financeiro ───────────────────────────────────────────
+model Transaction {
+  id          String              @id @default(uuid())
+  type        TransactionType
+  status      TransactionStatus   @default(PENDENTE)
+  category    TransactionCategory
+  description String
+  amount      Decimal             @db.Decimal(12, 2)
+  dueDate     DateTime
+  paidAt      DateTime?
+  paymentMethod PaymentMethod?
+  notes       String?
+
+  saleId      String?
+  sale        Sale?               @relation(fields: [saleId], references: [id])
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("transactions")
+}
+
+// ─── Fornecedores ─────────────────────────────────────────────────
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  cnpj      String?  @unique
+  email     String?
+  phone     String?
+  contact   String?
+  address   String?
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("suppliers")
+}
+
+// ─── Lançamentos ──────────────────────────────────────────────────
+model LancamentoCompra {
+  id         String   @id @default(uuid())
+  data       DateTime
+  fornecedor String
+  modelo     String
+  quantidade Int
+  moeda      String   @default("BRL")
+  preco      Decimal  @db.Decimal(12, 2)
+  cotacao    Decimal? @db.Decimal(10, 4)
+  totalBrl   Decimal? @db.Decimal(12, 2)
+  obs        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("lancamentos_compra")
+}
+
+model LancamentoAcerto {
+  id        String   @id @default(uuid())
+  data      DateTime
+  cliente   String
+  cotacao   Decimal? @db.Decimal(10, 4)
+  juros     Decimal  @db.Decimal(12, 2)
+  liquido   Decimal  @db.Decimal(12, 2)
+  obs       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("lancamentos_acerto")
+}
+
+model LancamentoVenda {
+  id             String   @id @default(uuid())
+  data           DateTime
+  cliente        String
+  modelo         String
+  quantidade     Int
+  valor          Decimal  @db.Decimal(12, 2)
+  valorLiquido   Decimal? @db.Decimal(12, 2)
+  formaPagamento String
+  vendedor       String?
+  obsVenda       String?
+  cpfNf          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("lancamentos_venda")
+}

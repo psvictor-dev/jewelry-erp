@@ -1,0 +1,29 @@
+{
+  "name": "erp-joalheria",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write .",
+    "db:up": "docker compose -f infra/docker-compose.yml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yml down",
+    "db:migrate": "cd apps/erp-api && npx prisma migrate dev",
+    "db:seed": "cd apps/erp-api && npx ts-node prisma/seed.ts",
+    "db:studio": "cd apps/erp-api && npx prisma studio",
+    "setup": "yarn install && yarn db:up"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.0",
+    "prettier": "^3.2.0",
+    "eslint": "^8.57.0",
+    "husky": "^9.0.0"
+  },
+  "packageManager": "yarn@1.22.22"
+}
