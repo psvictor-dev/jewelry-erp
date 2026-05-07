@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, Res, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Res, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SalesService } from './sales.service';
@@ -39,6 +39,11 @@ export class SalesController {
       'Content-Length': buffer.length,
     });
     res.end(buffer);
+  }
+
+  @Patch(':id/status') @ApiOperation({ summary: 'Avançar status da venda no pipeline de produção' })
+  advanceStatus(@Param('id') id: string, @Request() req: any) {
+    return this.sales.advanceStatus(id, req.user.id);
   }
 
   @Get(':id') @ApiOperation({ summary: 'Buscar venda' })

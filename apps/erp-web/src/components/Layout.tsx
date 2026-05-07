@@ -4,12 +4,14 @@ import { useAuthStore } from '../stores/auth.store';
 import {
   LayoutDashboard, Package, FileText,
   ShoppingCart, Wallet, BarChart3, LogOut, Gem, ClipboardList,
-  Users, Truck, UserCog, ChevronDown, BookUser,
+  Users, Truck, UserCog, ChevronDown, BookUser, Layers, Tag,
 } from 'lucide-react';
 
 const mainNav = [
   { to: '/',              label: 'Dashboard',   Icon: LayoutDashboard },
   { to: '/products',      label: 'Produtos',    Icon: Package },
+  { to: '/stock',         label: 'Estoque',     Icon: Layers  },
+  { to: '/categories',    label: 'Categorias',  Icon: Tag     },
   { to: '/quotes',        label: 'Orçamentos',  Icon: FileText },
   { to: '/sales',         label: 'Vendas',      Icon: ShoppingCart },
   { to: '/financial',     label: 'Financeiro',  Icon: Wallet },

@@ -44,10 +44,14 @@ enum QuoteStatus {
 }
 
 enum SaleStatus {
-  PENDENTE
-  PAGO
+  RECEBIDO
+  EM_PRODUCAO
+  ENTREGUE
   CANCELADO
   DEVOLVIDO
+  // legado — mantidos para compatibilidade com PostgreSQL (não suporta DROP VALUE)
+  PENDENTE
+  PAGO
 }
 
 enum TransactionType {
@@ -263,7 +267,7 @@ model QuoteItem {
 model Sale {
   id            String        @id @default(uuid())
   number        Int           @unique @default(autoincrement())
-  status        SaleStatus    @default(PENDENTE)
+  status        SaleStatus    @default(RECEBIDO)
   paymentMethod PaymentMethod
   installments  Int           @default(1)
   discount      Decimal       @default(0) @db.Decimal(12, 2)

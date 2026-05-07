@@ -13,6 +13,8 @@ import SaleNewPage from './pages/SaleNewPage';
 import FinancialPage from './pages/FinancialPage';
 import DREPage from './pages/DREPage';
 import LancamentosPage from './pages/LancamentosPage';
+import StockPage from './pages/StockPage';
+import CategoriesPage from './pages/CategoriesPage';
 import Layout from './components/Layout';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -26,7 +28,9 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
-        <Route path="products"  element={<ProductsPage />} />
+        <Route path="products"    element={<ProductsPage />} />
+        <Route path="stock"       element={<StockPage />} />
+        <Route path="categories"  element={<CategoriesPage />} />
 
         {/* Contas */}
         <Route path="customers" element={<Navigate to="/contas/clientes" replace />} />

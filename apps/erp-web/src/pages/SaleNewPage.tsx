@@ -1,9 +1,69 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Trash2, Search, ShoppingBag, Hammer, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../lib/api';
+
+function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string, name: string) => void }) {
+  const qc = useQueryClient();
+  const [name, setName]   = useState('');
+  const [phone, setPhone] = useState('');
+
+  const save = useMutation({
+    mutationFn: () => api.post('/customers', { name: name.trim(), phone: phone.trim() || undefined }),
+    onSuccess: ({ data }) => {
+      qc.invalidateQueries({ queryKey: ['customers'] });
+      toast.success('Cliente cadastrado!');
+      onCreated(data.id, data.name);
+    },
+    onError: () => toast.error('Erro ao cadastrar cliente'),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
+        <div className="flex items-center justify-between p-5 border-b">
+          <h2 className="font-bold text-lg">Novo Cliente</h2>
+          <button onClick={onClose}><X size={20} className="text-gray-400 hover:text-gray-600" /></button>
+        </div>
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+            <input
+              className="input"
+              placeholder="Nome completo"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && name.trim() && save.mutate()}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+            <input
+              className="input"
+              placeholder="(11) 99999-9999"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && name.trim() && save.mutate()}
+            />
+          </div>
+        </div>
+        <div className="flex gap-3 p-5 border-t">
+          <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending || !name.trim()}
+            className="btn-primary flex-1"
+          >
+            {save.isPending ? 'Salvando...' : 'Cadastrar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const PM_OPTIONS = [
   { value: 'DINHEIRO',       label: 'Dinheiro (à vista)' },
@@ -15,13 +75,15 @@ const PM_OPTIONS = [
 export default function SaleNewPage() {
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
-  const [saleDate,       setSaleDate]       = useState(today);
-  const [customerId,     setCustomerId]     = useState('');
-  const [paymentMethod,  setPaymentMethod]  = useState('DINHEIRO');
-  const [discount,       setDiscount]       = useState(0);
-  const [notes,          setNotes]          = useState('');
-  const [items,          setItems]          = useState<any[]>([]);
-  const [productSearch,  setProductSearch]  = useState('');
+  const [saleDate,        setSaleDate]        = useState(today);
+  const [customerId,      setCustomerId]      = useState('');
+  const [paymentMethod,   setPaymentMethod]   = useState('DINHEIRO');
+  const [discount,        setDiscount]        = useState(0);
+  const [notes,           setNotes]           = useState('');
+  const [items,           setItems]           = useState<any[]>([]);
+  const [productSearch,   setProductSearch]   = useState('');
+  const [entregaImediata, setEntregaImediata] = useState(true);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -53,11 +115,12 @@ export default function SaleNewPage() {
 
   const save = useMutation({
     mutationFn: () => api.post('/sales', {
-      data:          saleDate,
-      customerId:    customerId || undefined,
+      data:           saleDate,
+      customerId:     customerId || undefined,
       paymentMethod,
       discount,
-      notes:         notes || undefined,
+      notes:          notes || undefined,
+      entregaImediata,
       items: items.map(i => ({
         productId: i.productId,
         quantity:  i.quantity,
@@ -74,7 +137,35 @@ export default function SaleNewPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold text-yellow-900 mb-6">Nova Venda</h1>
+      <h1 className="text-2xl font-bold text-yellow-900 mb-4">Nova Venda</h1>
+
+      {/* Tipo de venda */}
+      <div className="flex gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => setEntregaImediata(true)}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+            entregaImediata
+              ? 'border-yellow-500 bg-yellow-50 text-yellow-900'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+          }`}
+        >
+          <ShoppingBag size={16} />
+          Balcão (entrega imediata)
+        </button>
+        <button
+          type="button"
+          onClick={() => setEntregaImediata(false)}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg border-2 text-sm font-medium transition-colors ${
+            !entregaImediata
+              ? 'border-yellow-500 bg-yellow-50 text-yellow-900'
+              : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300'
+          }`}
+        >
+          <Hammer size={16} />
+          Encomenda (vai para produção)
+        </button>
+      </div>
 
       {/* Dados da venda */}
       <div className="card mb-6 space-y-4">
@@ -92,12 +183,22 @@ export default function SaleNewPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
-            <select className="input" value={customerId} onChange={e => setCustomerId(e.target.value)}>
-              <option value="">Balcão (sem cliente)</option>
-              {(customers as any[]).map((c: any) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select className="input flex-1" value={customerId} onChange={e => setCustomerId(e.target.value)}>
+                <option value="">Balcão (sem cliente)</option>
+                {(customers as any[]).map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowNewCustomer(true)}
+                title="Cadastrar novo cliente"
+                className="btn-secondary px-3 shrink-0"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
@@ -237,9 +338,16 @@ export default function SaleNewPage() {
           disabled={items.length === 0 || save.isPending}
           className="btn-primary flex-1"
         >
-          {save.isPending ? 'Registrando...' : 'Registrar Venda'}
+          {save.isPending ? 'Registrando...' : entregaImediata ? 'Registrar Venda' : 'Criar Encomenda'}
         </button>
       </div>
+
+      {showNewCustomer && (
+        <NewCustomerModal
+          onClose={() => setShowNewCustomer(false)}
+          onCreated={(id) => { setCustomerId(id); setShowNewCustomer(false); }}
+        />
+      )}
     </div>
   );
 }
