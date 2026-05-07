@@ -94,9 +94,9 @@ export default function DashboardPage() {
   const { data: products } = useQuery({ queryKey: ['prod-dash'],   queryFn: () => api.get('/products?limit=1').then(r => r.data) });
   const { data: lowStock } = useQuery({ queryKey: ['low-stock'],   queryFn: () => api.get('/products/low-stock').then(r => r.data) });
   const { data: quotes }   = useQuery({ queryKey: ['quotes-dash'], queryFn: () => api.get('/quotes?status=ENVIADO').then(r => r.data) });
-  const { data: sales }    = useQuery({ queryKey: ['sales-dash'],  queryFn: () => api.get('/sales').then(r => r.data) });
+  const { data: salesResp } = useQuery({ queryKey: ['sales-dash'], queryFn: () => api.get('/sales').then(r => r.data) });
 
-  const recentSales  = (sales ?? []).slice(0, 6);
+  const recentSales  = (salesResp?.data ?? []).slice(0, 6);
   const receita      = dre?.receitas?.total   ?? 0;
   const despesas     = dre?.despesasOperacionais?.total ?? 0;
   const lucro        = dre?.lucroLiquido      ?? 0;
